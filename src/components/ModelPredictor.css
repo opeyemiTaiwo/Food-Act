@@ -1,0 +1,137 @@
+.model-predictor .predictor-panel {
+  margin-top: 40px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  text-align: left;
+}
+
+.code-input {
+  width: 100%;
+  min-height: 260px;
+  background: var(--bg);
+  color: var(--text-h);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 14px;
+  line-height: 145%;
+  resize: vertical;
+}
+
+.code-input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+
+.predictor-controls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.predictor-controls .cta-button {
+  border: none;
+  cursor: pointer;
+  font: inherit;
+}
+
+.predictor-controls .cta-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.predictor-status {
+  font-size: 14px;
+  color: var(--text);
+  margin: 0;
+  max-width: 420px;
+}
+
+.predictor-status.warming {
+  color: var(--accent);
+}
+
+.predictor-status.error {
+  color: #f87171;
+}
+
+.predictor-result {
+  margin-top: 24px;
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+
+.predictor-result h3 {
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+
+.result-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.result-heading {
+  margin: 16px 0 4px;
+  font-weight: 600;
+  color: var(--text-h);
+  font-size: 15px;
+}
+
+.result-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 14px;
+}
+
+.result-key {
+  color: var(--text);
+}
+
+.result-value {
+  color: var(--text-h);
+  font-weight: 500;
+  text-align: right;
+}
+
+.raw-json {
+  margin-top: 20px;
+}
+
+.raw-json summary {
+  cursor: pointer;
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.raw-json pre,
+.raw-json-fallback {
+  margin-top: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-size: 13px;
+  overflow-x: auto;
+  color: var(--text);
+}
+
+@media (max-width: 600px) {
+  .result-row {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .result-value {
+    text-align: left;
+  }
+}

@@ -1,47 +1,60 @@
 import { useState } from 'react'
+import ModelPredictor from './components/ModelPredictor'
 import './App.css'
 
-const services = [
+const steps = [
   {
-    title: 'Market Expansion',
+    title: 'Submit Your Contract',
     description:
-      'Identify and enter new markets with data-driven strategies tailored to your growth stage.',
+      'Share your repository or contract files through our secure intake process.',
   },
   {
-    title: 'Strategic Partnerships',
+    title: 'Automated Scanning',
     description:
-      'Build alliances that open doors, share risk, and accelerate your path to scale.',
+      'Static and dynamic analysis tools flag known vulnerability patterns and gas inefficiencies.',
   },
   {
-    title: 'Sales Growth',
+    title: 'Manual Expert Review',
     description:
-      'Optimize your pipeline and sales process to convert more opportunities into revenue.',
+      'Senior auditors trace logic paths and economic assumptions the tools can miss.',
   },
   {
-    title: 'Business Consulting',
+    title: 'Report & Remediation',
     description:
-      'Get hands-on guidance on positioning, pricing, and operations from experienced advisors.',
+      'Receive a detailed findings report and work with us to verify every fix.',
   },
 ]
 
-const caseStudies = [
+const features = [
   {
-    client: 'Northwind Retail Group',
-    result: '+38% Revenue in 12 Months',
+    title: 'Vulnerability Scanning',
     description:
-      'Repositioned a regional retailer for national expansion through new distribution partnerships.',
+      'Automated detection of reentrancy, overflow, access control, and other common exploit vectors.',
   },
   {
-    client: 'Bluepeak Logistics',
-    result: '3 New Markets Entered',
+    title: 'Manual Code Review',
     description:
-      'Guided market-entry strategy and local partnerships across three new regions in under a year.',
+      'Line-by-line review from engineers who have audited protocols securing billions in TVL.',
   },
   {
-    client: 'Solace Health Tech',
-    result: '2x Sales Pipeline',
+    title: 'Gas Optimization',
     description:
-      'Rebuilt the sales process and outreach strategy, doubling qualified pipeline in two quarters.',
+      'Identify costly patterns and recommend optimizations without compromising safety.',
+  },
+  {
+    title: 'Detailed Reporting',
+    description:
+      'Clear, actionable reports ranked by severity, with reproduction steps and fixes.',
+  },
+  {
+    title: 'Multi-Chain Support',
+    description:
+      'Audits across EVM chains and beyond, tailored to each chain’s quirks and tooling.',
+  },
+  {
+    title: 'Continuous Monitoring',
+    description:
+      'Ongoing on-chain monitoring to catch anomalies after deployment, not just before.',
   },
 ]
 
@@ -55,14 +68,15 @@ function App() {
       <header className="nav">
         <div className="nav-inner">
           <a href="#home" className="logo" onClick={closeMenu}>
-            Vantage Growth Partners
+            Ironclad Audits
           </a>
 
           <nav className={`nav-links ${menuOpen ? 'open' : ''}`}>
             <a href="#home" onClick={closeMenu}>Home</a>
             <a href="#about" onClick={closeMenu}>About</a>
-            <a href="#services" onClick={closeMenu}>Services</a>
-            <a href="#case-studies" onClick={closeMenu}>Case Studies</a>
+            <a href="#how-it-works" onClick={closeMenu}>How It Works</a>
+            <a href="#features" onClick={closeMenu}>Features</a>
+            <a href="#live-demo" onClick={closeMenu}>Live Demo</a>
             <a href="#contact" onClick={closeMenu}>Contact</a>
           </nav>
 
@@ -82,77 +96,80 @@ function App() {
 
       <main>
         <section id="home" className="section hero">
-          <h1>Grow Your Business With Confidence</h1>
+          <h1>Smart Contract Security You Can Trust</h1>
           <p>
-            We help ambitious companies unlock new markets, forge strategic
-            partnerships, and scale revenue sustainably.
+            We help protocols ship with confidence through rigorous audits,
+            automated scanning, and continuous on-chain monitoring.
           </p>
-          <a href="#contact" className="cta-button">Get in Touch</a>
+          <a href="#contact" className="cta-button">Request an Audit</a>
         </section>
 
         <section id="about" className="section about">
           <h2>About Us</h2>
           <p>
-            We're a business development consultancy focused on helping
-            growth-stage companies expand into new markets, build lasting
-            partnerships, and turn strategy into measurable revenue.
+            Ironclad Audits is a team of security engineers and smart
+            contract developers dedicated to protecting Web3 protocols from
+            exploits. We combine automated tooling with deep manual review to
+            catch what others miss.
           </p>
           <div className="stats">
             <div className="stat">
-              <span className="stat-number">120+</span>
-              <span className="stat-label">Clients Served</span>
+              <span className="stat-number">200+</span>
+              <span className="stat-label">Contracts Audited</span>
             </div>
             <div className="stat">
-              <span className="stat-number">15</span>
-              <span className="stat-label">Years Experience</span>
+              <span className="stat-number">$2B+</span>
+              <span className="stat-label">Value Secured</span>
             </div>
             <div className="stat">
-              <span className="stat-number">$50M+</span>
-              <span className="stat-label">Revenue Generated</span>
+              <span className="stat-number">0</span>
+              <span className="stat-label">Missed Critical Bugs</span>
             </div>
           </div>
         </section>
 
-        <section id="services" className="section services">
-          <h2>Our Services</h2>
-          <div className="grid">
-            {services.map((service) => (
-              <div className="card" key={service.title}>
-                <h3>{service.title}</h3>
-                <p>{service.description}</p>
+        <section id="how-it-works" className="section how-it-works">
+          <h2>How It Works</h2>
+          <div className="steps">
+            {steps.map((step, index) => (
+              <div className="step" key={step.title}>
+                <div className="step-number">{index + 1}</div>
+                <h3>{step.title}</h3>
+                <p>{step.description}</p>
               </div>
             ))}
           </div>
         </section>
 
-        <section id="case-studies" className="section case-studies">
-          <h2>Case Studies</h2>
+        <section id="features" className="section features">
+          <h2>Features</h2>
           <div className="grid">
-            {caseStudies.map((study) => (
-              <div className="card" key={study.client}>
-                <h3>{study.client}</h3>
-                <p className="result">{study.result}</p>
-                <p>{study.description}</p>
+            {features.map((feature) => (
+              <div className="card" key={feature.title}>
+                <h3>{feature.title}</h3>
+                <p>{feature.description}</p>
               </div>
             ))}
           </div>
         </section>
+
+        <ModelPredictor />
 
         <section id="contact" className="section contact">
-          <h2>Let's Talk</h2>
+          <h2>Secure Your Protocol</h2>
           <p>
-            Ready to take the next step? Reach out and we'll get back to you
+            Ready to get audited? Reach out and we'll schedule a scoping call
             within one business day.
           </p>
           <div className="contact-links">
-            <a href="mailto:hello@vantagegrowth.com">hello@vantagegrowth.com</a>
+            <a href="mailto:hello@ironcladaudits.io">hello@ironcladaudits.io</a>
             <a href="tel:+10000000000">+1 (000) 000-0000</a>
           </div>
         </section>
       </main>
 
       <footer className="footer">
-        <p>&copy; {new Date().getFullYear()} Vantage Growth Partners. All rights reserved.</p>
+        <p>&copy; {new Date().getFullYear()} Ironclad Audits. All rights reserved.</p>
       </footer>
     </>
   )
