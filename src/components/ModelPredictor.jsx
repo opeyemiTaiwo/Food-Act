@@ -5,6 +5,7 @@ import './ModelPredictor.css'
 const SPACE_URL = 'https://opethaiwoh-vun-smt.hf.space'
 const ENDPOINT = '/predict_reentrancy'
 const WARMUP_DELAY_MS = 4000
+const SEVERITY_LEVELS = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
 
 const SAMPLE_CONTRACT = `pragma solidity ^0.8.0;
 
@@ -37,11 +38,16 @@ function getClient() {
   return clientPromise
 }
 
+function severityClass(value) {
+  const normalized = String(value || '').trim().toUpperCase()
+  return SEVERITY_LEVELS.includes(normalized) ? normalized.toLowerCase() : 'default'
+}
+
 function ModelPredictor() {
   const [sourceCode, setSourceCode] = useState(SAMPLE_CONTRACT)
   const [status, setStatus] = useState('idle') // idle | connecting | warming | success | error
   const [error, setError] = useState(null)
-  const [result, setResult] = useState(null)
+  const [resultData, setResultData] = useState(null) // full response.data array
   const warmupTimer = useRef(null)
 
   useEffect(() => () => clearTimeout(warmupTimer.current), [])
@@ -50,7 +56,7 @@ function ModelPredictor() {
     clearTimeout(warmupTimer.current)
     setStatus('connecting')
     setError(null)
-    setResult(null)
+    setResultData(null)
 
     warmupTimer.current = setTimeout(() => {
       setStatus((current) => (current === 'connecting' ? 'warming' : current))
@@ -60,7 +66,7 @@ function ModelPredictor() {
       const client = await getClient()
       const response = await client.predict(ENDPOINT, { source_code: sourceCode })
       clearTimeout(warmupTimer.current)
-      setResult(response.data[0])
+      setResultData(response.data)
       setStatus('success')
     } catch (err) {
       clearTimeout(warmupTimer.current)
@@ -72,8 +78,11 @@ function ModelPredictor() {
   }
 
   const isLoading = status === 'connecting' || status === 'warming'
-  const isPlainObject =
-    result !== null && typeof result === 'object' && !Array.isArray(result)
+
+  const htmlFallback = Array.isArray(resultData) ? resultData[0] : undefined
+  const structured = Array.isArray(resultData) ? resultData[1] : undefined
+  const hasStructured =
+    structured !== null && typeof structured === 'object' && !Array.isArray(structured)
 
   return (
     <section id="live-demo" className="section model-predictor">
@@ -120,42 +129,117 @@ function ModelPredictor() {
           )}
         </div>
 
-        {result !== null && (
+        {resultData !== null && (
           <div className="predictor-result">
             <h3>Analysis Result</h3>
 
-            {isPlainObject ? (
-              <div className="result-list">
-                {Object.entries(result).map(([key, value], index) => {
-                  const isDivider = value === ''
-                  const isBlankKey = key.trim() === ''
-                  if (isDivider && isBlankKey) return null
-                  if (isDivider) {
-                    return (
-                      <p className="result-heading" key={index}>
-                        {key}
-                      </p>
-                    )
-                  }
-                  return (
-                    <div className="result-row" key={index}>
-                      <span className="result-key">{key}</span>
-                      <span className="result-value">{String(value)}</span>
-                    </div>
-                  )
-                })}
-              </div>
-            ) : (
-              <pre className="raw-json-fallback">
-                {JSON.stringify(result, null, 2)}
-              </pre>
-            )}
+            {hasStructured ? (
+              <div className="analysis">
+                <div className={`risk-card severity-${severityClass(structured.risk_level)}`}>
+                  <div className="risk-score-block">
+                    <span className="risk-score-number">{structured.risk_score}</span>
+                    <span className="risk-score-max">/100</span>
+                  </div>
 
-            {isPlainObject && (
-              <details className="raw-json">
-                <summary>View raw JSON</summary>
-                <pre>{JSON.stringify(result, null, 2)}</pre>
-              </details>
+                  <div className="risk-meta">
+                    <span className={`badge badge-${severityClass(structured.risk_level)}`}>
+                      {structured.risk_level} RISK
+                    </span>
+                    {typeof structured.model_confidence_pct === 'number' && (
+                      <span className="risk-stat">
+                        Model confidence: {structured.model_confidence_pct}%
+                      </span>
+                    )}
+                    {typeof structured.reentrancy_probability_pct === 'number' && (
+                      <span className="risk-stat">
+                        Reentrancy probability: {structured.reentrancy_probability_pct}%
+                      </span>
+                    )}
+                    {typeof structured.external_calls === 'number' && (
+                      <span className="risk-stat">
+                        External calls: {structured.external_calls}
+                      </span>
+                    )}
+                    {typeof structured.reentrancy_guard_present === 'boolean' && (
+                      <span className="risk-stat">
+                        Reentrancy guard:{' '}
+                        {structured.reentrancy_guard_present ? 'Present' : 'Not present'}
+                      </span>
+                    )}
+                  </div>
+
+                  {structured.counts && (
+                    <div className="count-badges">
+                      <span className="count-badge severity-critical">
+                        {structured.counts.critical ?? 0} Critical
+                      </span>
+                      <span className="count-badge severity-high">
+                        {structured.counts.high ?? 0} High
+                      </span>
+                      <span className="count-badge severity-medium">
+                        {structured.counts.medium ?? 0} Medium
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {Array.isArray(structured.findings) && structured.findings.length > 0 && (
+                  <div className="analysis-block">
+                    <h4>Findings</h4>
+                    <div className="card-list">
+                      {structured.findings.map((finding, index) => (
+                        <div
+                          className={`finding-card severity-${severityClass(finding.severity)}`}
+                          key={index}
+                        >
+                          <div className="card-header">
+                            <span className={`badge badge-${severityClass(finding.severity)}`}>
+                              {finding.severity}
+                            </span>
+                            <span className="card-title">{finding.title}</span>
+                          </div>
+                          <p className="card-detail">{finding.detail}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {Array.isArray(structured.recommendations) &&
+                  structured.recommendations.length > 0 && (
+                    <div className="analysis-block">
+                      <h4>Recommendations</h4>
+                      <div className="card-list">
+                        {structured.recommendations.map((rec, index) => (
+                          <div
+                            className={`finding-card severity-${severityClass(rec.priority)}`}
+                            key={index}
+                          >
+                            <div className="card-header">
+                              <span className={`badge badge-${severityClass(rec.priority)}`}>
+                                {rec.priority}
+                              </span>
+                              <span className="card-title">{rec.title}</span>
+                            </div>
+                            <p className="card-detail">{rec.description}</p>
+                            {rec.code && (
+                              <pre className="fix-code">
+                                <code>{rec.code}</code>
+                              </pre>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+              </div>
+            ) : htmlFallback ? (
+              <div
+                className="analysis-html-fallback"
+                dangerouslySetInnerHTML={{ __html: String(htmlFallback) }}
+              />
+            ) : (
+              <p className="predictor-status">No result data was returned.</p>
             )}
           </div>
         )}
