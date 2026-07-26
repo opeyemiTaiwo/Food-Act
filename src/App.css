@@ -1,0 +1,264 @@
+.nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+}
+
+.logo {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-h);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.nav-links a {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 15px;
+  transition: color 0.2s;
+}
+
+.nav-links a:hover {
+  color: var(--accent);
+}
+
+.hamburger {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+  width: 32px;
+  height: 32px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.hamburger span {
+  display: block;
+  height: 2px;
+  width: 100%;
+  background: var(--text-h);
+  border-radius: 2px;
+  transition: transform 0.3s, opacity 0.3s;
+}
+
+.hamburger.active span:nth-child(1) {
+  transform: translateY(7px) rotate(45deg);
+}
+.hamburger.active span:nth-child(2) {
+  opacity: 0;
+}
+.hamburger.active span:nth-child(3) {
+  transform: translateY(-7px) rotate(-45deg);
+}
+
+@media (max-width: 768px) {
+  .hamburger {
+    display: flex;
+  }
+
+  .nav-links {
+    position: fixed;
+    top: 65px;
+    left: 0;
+    right: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    background: var(--bg-elevated);
+    border-bottom: 1px solid var(--border);
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+
+  .nav-links.open {
+    max-height: 320px;
+  }
+
+  .nav-links a {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    text-align: center;
+  }
+}
+
+main {
+  padding-top: 65px;
+}
+
+.section {
+  padding: 96px 24px;
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hero {
+  min-height: calc(100svh - 65px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.hero p {
+  max-width: 600px;
+  margin: 16px auto 32px;
+  color: var(--text);
+  font-size: 18px;
+}
+
+.cta-button {
+  display: inline-block;
+  padding: 14px 32px;
+  background: var(--accent);
+  color: #16171d;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: opacity 0.2s, box-shadow 0.2s;
+}
+
+.cta-button:hover {
+  opacity: 0.9;
+  box-shadow: var(--shadow);
+}
+
+.about p {
+  max-width: 700px;
+  margin: 0 auto;
+  color: var(--text);
+}
+
+.stats {
+  display: flex;
+  justify-content: center;
+  gap: 48px;
+  margin-top: 40px;
+  flex-wrap: wrap;
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--text-h);
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--text);
+  margin-top: 4px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  margin-top: 40px;
+  text-align: left;
+}
+
+.card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+
+.card:hover {
+  box-shadow: var(--shadow);
+  border-color: var(--accent-border);
+}
+
+.card h3 {
+  color: var(--text-h);
+  font-size: 18px;
+  margin: 0 0 8px;
+}
+
+.card p {
+  color: var(--text);
+  font-size: 15px;
+  line-height: 145%;
+}
+
+.card .result {
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.contact p {
+  max-width: 600px;
+  margin: 0 auto;
+  color: var(--text);
+}
+
+.contact-links {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+
+.contact-links a {
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 16px;
+}
+
+.contact-links a:hover {
+  text-decoration: underline;
+}
+
+.footer {
+  text-align: center;
+  padding: 24px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  font-size: 14px;
+}
+
+@media (max-width: 600px) {
+  .section {
+    padding: 64px 20px;
+  }
+
+  .stats {
+    gap: 32px;
+  }
+}
