@@ -1,251 +1,155 @@
-import { useEffect, useRef, useState } from 'react'
-import { Client } from '@gradio/client'
-import './ModelPredictor.css'
+import React, { useState } from "react";
+import { Client } from "@gradio/client";
 
-const SPACE_URL = 'https://opethaiwoh-vun-smt.hf.space'
-const ENDPOINT = '/predict_reentrancy'
-const WARMUP_DELAY_MS = 4000
-const SEVERITY_LEVELS = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW']
+// Your deployed Space
+const SPACE = "opethaiwoh/vun-smt";
 
-const SAMPLE_CONTRACT = `pragma solidity ^0.8.0;
+const SEV = { CRITICAL: "#ef4444", HIGH: "#f97316", MEDIUM: "#eab308", LOW: "#3b82f6" };
+
+const SAMPLE = `pragma solidity ^0.8.0;
 
 contract VulnerableBank {
     mapping(address => uint) public balances;
-
-    function deposit() public payable {
-        balances[msg.sender] += msg.value;
-    }
-
+    function deposit() public payable { balances[msg.sender] += msg.value; }
     function withdraw(uint _amount) public {
         require(balances[msg.sender] >= _amount, "Insufficient balance");
-
-        // VULNERABILITY: External call before state update
-        (bool sent, ) = msg.sender.call{value: _amount}("");
+        (bool sent, ) = msg.sender.call{value: _amount}("");   // external call first
         require(sent, "Failed to send Ether");
-
-        // State change AFTER external call - allows reentrancy!
-        balances[msg.sender] -= _amount;
+        balances[msg.sender] -= _amount;                        // state change AFTER
     }
-}`
+}`;
 
-// Cached across calls so a second scan reuses the same connection
-// instead of re-handshaking with the Space.
-let clientPromise = null
-function getClient() {
-  if (!clientPromise) {
-    clientPromise = Client.connect(SPACE_URL)
-  }
-  return clientPromise
-}
+export default function ModelPredictor() {
+  const [code, setCode] = useState(SAMPLE);
+  const [status, setStatus] = useState("idle");   // idle | loading | warming | done | error
+  const [data, setData] = useState(null);         // structured JSON
+  const [rawHtml, setRawHtml] = useState(null);   // fallback HTML string
+  const [error, setError] = useState("");
 
-function severityClass(value) {
-  const normalized = String(value || '').trim().toUpperCase()
-  return SEVERITY_LEVELS.includes(normalized) ? normalized.toLowerCase() : 'default'
-}
-
-function ModelPredictor() {
-  const [sourceCode, setSourceCode] = useState(SAMPLE_CONTRACT)
-  const [status, setStatus] = useState('idle') // idle | connecting | warming | success | error
-  const [error, setError] = useState(null)
-  const [resultData, setResultData] = useState(null) // full response.data array
-  const warmupTimer = useRef(null)
-
-  useEffect(() => () => clearTimeout(warmupTimer.current), [])
-
-  const runScan = async () => {
-    clearTimeout(warmupTimer.current)
-    setStatus('connecting')
-    setError(null)
-    setResultData(null)
-
-    warmupTimer.current = setTimeout(() => {
-      setStatus((current) => (current === 'connecting' ? 'warming' : current))
-    }, WARMUP_DELAY_MS)
-
+  async function runScan() {
+    setStatus("loading"); setError(""); setData(null); setRawHtml(null);
+    const warm = setTimeout(() => setStatus("warming"), 4000); // free Spaces cold-start
     try {
-      const client = await getClient()
-      const response = await client.predict(ENDPOINT, { source_code: sourceCode })
-      clearTimeout(warmupTimer.current)
-      setResultData(response.data)
-      setStatus('success')
-    } catch (err) {
-      clearTimeout(warmupTimer.current)
-      // Drop the cached connection so the next attempt reconnects fresh.
-      clientPromise = null
-      setError(err?.message || 'Something went wrong while contacting the model.')
-      setStatus('error')
+      const app = await Client.connect(SPACE);
+      const res = await app.predict("/predict_reentrancy", [code]);
+      clearTimeout(warm);
+      // /predict_reentrancy returns [dashboard_html, structured_json]
+      const arr = Array.isArray(res?.data) ? res.data : [res?.data];
+      const structured = arr.find((x) => x && typeof x === "object" && "risk_score" in x);
+      const htmlStr = arr.find((x) => typeof x === "string" && x.includes("<div"));
+      if (structured) { setData(structured); setStatus("done"); }
+      else if (htmlStr) { setRawHtml(htmlStr); setStatus("done"); }   // fallback
+      else { setError("Unexpected response from the model."); setStatus("error"); }
+    } catch (e) {
+      clearTimeout(warm);
+      setError(e?.message ? String(e.message) : String(e));
+      setStatus("error");
     }
   }
 
-  const isLoading = status === 'connecting' || status === 'warming'
-
-  const htmlFallback = Array.isArray(resultData) ? resultData[0] : undefined
-  const structured = Array.isArray(resultData) ? resultData[1] : undefined
-  const hasStructured =
-    structured !== null && typeof structured === 'object' && !Array.isArray(structured)
+  const riskColor = (lvl) => (lvl === "HIGH" ? "#ef4444" : lvl === "MEDIUM" ? "#f59e0b" : "#22c55e");
 
   return (
-    <section id="live-demo" className="section model-predictor">
-      <h2>Try the Model</h2>
-      <p>
-        Paste Solidity source code below and run it through our live
-        reentrancy-detection model, hosted on Hugging Face Spaces.
+    <section id="live-demo" style={{ maxWidth: 1000, margin: "0 auto", padding: "24px 16px", color: "#e5e7eb" }}>
+      <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 8 }}>Live Demo</h2>
+      <p style={{ color: "#9ca3af", marginBottom: 16 }}>
+        Paste a Solidity contract and run it against the AI model (Random Forest + rule checks).
       </p>
 
-      <div className="predictor-panel">
-        <textarea
-          className="code-input"
-          value={sourceCode}
-          onChange={(event) => setSourceCode(event.target.value)}
-          spellCheck={false}
-          rows={14}
-          aria-label="Solidity source code"
-        />
+      <textarea
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        spellCheck={false}
+        style={{
+          width: "100%", minHeight: 220, fontFamily: "ui-monospace,Menlo,monospace",
+          fontSize: 13, background: "#0b1220", color: "#e5e7eb", border: "1px solid #334155",
+          borderRadius: 10, padding: 14, resize: "vertical",
+        }}
+      />
 
-        <div className="predictor-controls">
-          <button
-            type="button"
-            className="cta-button"
-            onClick={runScan}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Scanning…' : 'Run Security Scan'}
-          </button>
+      <button
+        onClick={runScan}
+        disabled={status === "loading" || status === "warming"}
+        style={{
+          marginTop: 12, padding: "12px 22px", borderRadius: 10, border: "none",
+          fontWeight: 700, fontSize: 15, cursor: "pointer",
+          background: "#a78bfa", color: "#1f1147",
+          opacity: status === "loading" || status === "warming" ? 0.7 : 1,
+        }}
+      >
+        {status === "loading" ? "Analyzing…" : status === "warming" ? "Waking the model… (~30–60s)" : "Run Security Scan"}
+      </button>
 
-          {status === 'connecting' && (
-            <p className="predictor-status">Connecting to the model…</p>
-          )}
-          {status === 'warming' && (
-            <p className="predictor-status warming">
-              This is a free Hugging Face Space, so it sleeps when idle — it
-              can take 30-60s to wake up. Your scan is still running, hang
-              tight.
-            </p>
-          )}
-          {status === 'error' && (
-            <p className="predictor-status error">
-              {error} Please try again in a moment.
-            </p>
-          )}
+      <h3 style={{ fontSize: 20, fontWeight: 700, margin: "24px 0 12px" }}>Analysis Result</h3>
+
+      {status === "idle" && <p style={{ color: "#6b7280" }}>Run a scan to see results.</p>}
+      {status === "error" && (
+        <div style={{ background: "#3f1d1d", border: "1px solid #7f1d1d", borderRadius: 10, padding: 14, color: "#fca5a5" }}>
+          ⚠️ {error}
         </div>
+      )}
+      {(status === "loading" || status === "warming") && (
+        <div style={{ background: "#111827", border: "1px solid #374151", borderRadius: 10, padding: 14, color: "#9ca3af" }}>
+          {status === "warming" ? "The Space was asleep and is starting up. This first run can take up to a minute…" : "Running the model…"}
+        </div>
+      )}
 
-        {resultData !== null && (
-          <div className="predictor-result">
-            <h3>Analysis Result</h3>
-
-            {hasStructured ? (
-              <div className="analysis">
-                <div className={`risk-card severity-${severityClass(structured.risk_level)}`}>
-                  <div className="risk-score-block">
-                    <span className="risk-score-number">{structured.risk_score}</span>
-                    <span className="risk-score-max">/100</span>
-                  </div>
-
-                  <div className="risk-meta">
-                    <span className={`badge badge-${severityClass(structured.risk_level)}`}>
-                      {structured.risk_level} RISK
-                    </span>
-                    {typeof structured.model_confidence_pct === 'number' && (
-                      <span className="risk-stat">
-                        Model confidence: {structured.model_confidence_pct}%
-                      </span>
-                    )}
-                    {typeof structured.reentrancy_probability_pct === 'number' && (
-                      <span className="risk-stat">
-                        Reentrancy probability: {structured.reentrancy_probability_pct}%
-                      </span>
-                    )}
-                    {typeof structured.external_calls === 'number' && (
-                      <span className="risk-stat">
-                        External calls: {structured.external_calls}
-                      </span>
-                    )}
-                    {typeof structured.reentrancy_guard_present === 'boolean' && (
-                      <span className="risk-stat">
-                        Reentrancy guard:{' '}
-                        {structured.reentrancy_guard_present ? 'Present' : 'Not present'}
-                      </span>
-                    )}
-                  </div>
-
-                  {structured.counts && (
-                    <div className="count-badges">
-                      <span className="count-badge severity-critical">
-                        {structured.counts.critical ?? 0} Critical
-                      </span>
-                      <span className="count-badge severity-high">
-                        {structured.counts.high ?? 0} High
-                      </span>
-                      <span className="count-badge severity-medium">
-                        {structured.counts.medium ?? 0} Medium
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {Array.isArray(structured.findings) && structured.findings.length > 0 && (
-                  <div className="analysis-block">
-                    <h4>Findings</h4>
-                    <div className="card-list">
-                      {structured.findings.map((finding, index) => (
-                        <div
-                          className={`finding-card severity-${severityClass(finding.severity)}`}
-                          key={index}
-                        >
-                          <div className="card-header">
-                            <span className={`badge badge-${severityClass(finding.severity)}`}>
-                              {finding.severity}
-                            </span>
-                            <span className="card-title">{finding.title}</span>
-                          </div>
-                          <p className="card-detail">{finding.detail}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {Array.isArray(structured.recommendations) &&
-                  structured.recommendations.length > 0 && (
-                    <div className="analysis-block">
-                      <h4>Recommendations</h4>
-                      <div className="card-list">
-                        {structured.recommendations.map((rec, index) => (
-                          <div
-                            className={`finding-card severity-${severityClass(rec.priority)}`}
-                            key={index}
-                          >
-                            <div className="card-header">
-                              <span className={`badge badge-${severityClass(rec.priority)}`}>
-                                {rec.priority}
-                              </span>
-                              <span className="card-title">{rec.title}</span>
-                            </div>
-                            <p className="card-detail">{rec.description}</p>
-                            {rec.code && (
-                              <pre className="fix-code">
-                                <code>{rec.code}</code>
-                              </pre>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-              </div>
-            ) : htmlFallback ? (
-              <div
-                className="analysis-html-fallback"
-                dangerouslySetInnerHTML={{ __html: String(htmlFallback) }}
-              />
-            ) : (
-              <p className="predictor-status">No result data was returned.</p>
-            )}
+      {/* Preferred: render our own themed cards from the structured JSON */}
+      {status === "done" && data && (
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
+            <div style={{ fontSize: 18, fontWeight: 800 }}>AI Security Analysis</div>
+            <div style={{ background: riskColor(data.risk_level), color: "#0b1220", padding: "8px 16px", borderRadius: 10, fontWeight: 800 }}>
+              Risk Score: {data.risk_score}/100 · {data.risk_level} RISK
+            </div>
           </div>
-        )}
-      </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 14 }}>
+            <Metric label="Critical" value={data.counts?.critical ?? 0} color="#ef4444" />
+            <Metric label="High" value={data.counts?.high ?? 0} color="#f97316" />
+            <Metric label="Medium" value={data.counts?.medium ?? 0} color="#eab308" />
+            <Metric label="Model Confidence" value={`${data.model_confidence_pct ?? 0}%`} color="#3b82f6" />
+          </div>
+
+          <div style={{ fontSize: 16, fontWeight: 700, margin: "8px 0" }}>🔍 Findings</div>
+          {(data.findings || []).length === 0 && <p style={{ color: "#22c55e" }}>✅ No obvious vulnerability patterns detected.</p>}
+          {(data.findings || []).map((f, i) => (
+            <div key={i} style={{ background: "#111827", border: "1px solid #374151", borderLeft: `5px solid ${SEV[f.severity] || "#64748b"}`, borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <b>{f.title}</b>
+                <span style={{ background: SEV[f.severity], color: "#0b1220", padding: "2px 10px", borderRadius: 999, fontSize: 12, fontWeight: 800 }}>{f.severity}</span>
+              </div>
+              <div style={{ color: "#9ca3af", fontSize: 14, marginTop: 6 }}>{f.detail}</div>
+            </div>
+          ))}
+
+          <div style={{ fontSize: 16, fontWeight: 700, margin: "18px 0 8px" }}>💡 Recommendations</div>
+          {(data.recommendations || []).map((r, i) => (
+            <div key={i} style={{ background: "#0f1a13", border: "1px solid #14532d", borderRadius: 10, padding: "12px 14px", marginBottom: 10 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                <b>{r.title}</b>
+                <span style={{ background: SEV[r.priority] || "#3b82f6", color: "#0b1220", padding: "2px 10px", borderRadius: 999, fontSize: 12, fontWeight: 800 }}>{r.priority}</span>
+              </div>
+              <div style={{ color: "#cbd5e1", fontSize: 14, margin: "6px 0 8px" }}>{r.description}</div>
+              <pre style={{ background: "#0b1220", color: "#a7f3d0", padding: 12, borderRadius: 8, overflowX: "auto", fontSize: 13, margin: 0 }}><code>{r.code}</code></pre>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Fallback: Space still returns only HTML -> render it (not as text) */}
+      {status === "done" && !data && rawHtml && (
+        <div style={{ background: "#fff", borderRadius: 10, padding: 14 }} dangerouslySetInnerHTML={{ __html: rawHtml }} />
+      )}
     </section>
-  )
+  );
 }
 
-export default ModelPredictor
+function Metric({ label, value, color }) {
+  return (
+    <div style={{ background: "#111827", border: "1px solid #374151", borderRadius: 12, padding: "14px 16px" }}>
+      <div style={{ color, fontWeight: 700, fontSize: 13 }}>{label}</div>
+      <div style={{ fontSize: 24, fontWeight: 800, color: "#f9fafb", marginTop: 2 }}>{value}</div>
+    </div>
+  );
+}
